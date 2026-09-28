@@ -51,28 +51,28 @@ class CommunicationStep(BaseModel):
     step_number: int
     sender: str # "Client" or "Server"
     protocol_layer: str # "TCP", "SMTP/IMAP/POP3", "TLS"
-    command_or_status: str # e.g. "SYN", "220 mail.corp.net ESMTP", "EHLO sentinel.net", "STARTTLS", "220 2.0.0 Ready to start TLS", "ClientHello (TLS 1.3)", "ServerHello + Certificate + Finished", "Encrypted Handshake"
+    command_or_status: str
     is_encrypted: bool = False
-    timestamp_offset_ms: float
-    description: str
+    timestamp_offset_ms: float = 0.0
+    description: str = ""
     raw_payload_snippet: Optional[str] = None
 
 class TLSHandshake(BaseModel):
     session_id: str
     tls_version: str # TLS 1.3, TLS 1.2, TLS 1.1, TLS 1.0, SSL 3.0, None
-    cipher_suite: str # e.g. "TLS_AES_256_GCM_SHA384", "TLS_RSA_WITH_3DES_EDE_CBC_SHA"
+    cipher_suite: str
     cipher_suite_hex: Optional[str] = None
-    key_exchange: str # e.g. "ECDHE (X25519)", "RSA", "DHE"
-    authentication: str # e.g. "RSA-PSS", "ECDSA", "RSA"
-    encryption_algorithm: str # e.g. "AES-256-GCM", "3DES-CBC", "ChaCha20-Poly1305"
-    mac_hash: str # e.g. "SHA384", "SHA1", "AEAD"
+    key_exchange: str = "Unknown"
+    authentication: str = "Unknown"
+    encryption_algorithm: str = "Unknown"
+    mac_hash: str = "Unknown"
     forward_secrecy: bool = True
     session_resumption: bool = False
-    alpn: Optional[str] = None # e.g. "smtp", "imap"
+    alpn: Optional[str] = None
     sni_server_name: Optional[str] = None
-    client_supported_versions: List[str] = []
-    extensions: List[str] = []
-    warnings: List[str] = []
+    client_supported_versions: List[str] = Field(default_factory=list)
+    extensions: List[str] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
     risk: str = "LOW" # LOW, MEDIUM, HIGH, CRITICAL
 
 class Certificate(BaseModel):
@@ -90,16 +90,16 @@ class Certificate(BaseModel):
     days_remaining: int
     public_key_algorithm: str # RSA, ECDSA, Ed25519
     key_length: int # 2048, 4096, 1024, 256
-    signature_algorithm: str # sha256WithRSAEncryption, sha1WithRSAEncryption, md5WithRSAEncryption
-    san_list: List[str] = []
-    chain_status: str # "COMPLETE", "INCOMPLETE", "BROKEN", "SELF_SIGNED"
-    trust_status: str # "TRUSTED_ROOT", "INTERNAL_CA", "UNTRUSTED", "EXPIRED", "REVOKED_UNKNOWN"
+    signature_algorithm: str
+    san_list: List[str] = Field(default_factory=list)
+    chain_status: str = "COMPLETE"
+    trust_status: str = "TRUSTED_ROOT"
     is_self_signed: bool = False
     is_expired: bool = False
     is_expiring_soon: bool = False
-    chain_visualization: List[Dict[str, Any]] = [] # [Root CA, Intermediate CA, Server Cert]
-    validation_checks: Dict[str, bool] = {}
-    warnings: List[str] = []
+    chain_visualization: List[Dict[str, Any]] = Field(default_factory=list)
+    validation_checks: Dict[str, bool] = Field(default_factory=dict)
+    warnings: List[str] = Field(default_factory=list)
     risk: str = "LOW" # LOW, MEDIUM, HIGH, CRITICAL
 
 class EmailSession(BaseModel):
@@ -117,23 +117,23 @@ class EmailSession(BaseModel):
     cipher_suite: Optional[str] = None
     certificate_subject: Optional[str] = None
     certificate_id: Optional[str] = None
-    risk: str = "LOW" # "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"
-    status: str = "ENCRYPTED" # "ENCRYPTED", "PLAINTEXT", "DOWNGRADED", "FAILED_HANDSHAKE"
+    risk: str = "LOW"
+    status: str = "ENCRYPTED"
     start_time: str
     end_time: str
-    duration_ms: int
-    packet_count: int
-    byte_count: int
-    communication_flow: List[CommunicationStep] = []
-    flags: List[str] = []
-    explainable_risk_factors: List[str] = []
+    duration_ms: int = 0
+    packet_count: int = 0
+    byte_count: int = 0
+    communication_flow: List[CommunicationStep] = Field(default_factory=list)
+    flags: List[str] = Field(default_factory=list)
+    explainable_risk_factors: List[str] = Field(default_factory=list)
     risk_score: int = 15
 
 class Finding(BaseModel):
-    id: str # e.g. "CRYPTO-001"
+    id: str
     title: str
-    severity: str # "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"
-    category: str # "TLS Configuration", "Cipher Suite", "Certificate", "STARTTLS", "Key Exchange", "Signature"
+    severity: str
+    category: str
     session_id: str
     protocol: str
     evidence_observed: str
@@ -144,19 +144,19 @@ class Finding(BaseModel):
     recommendation: str
     cwe_id: Optional[str] = None
     cvss_score: Optional[float] = None
-    status: str = "OPEN" # "OPEN", "RESOLVED", "ACCEPTED"
+    status: str = "OPEN"
 
 class Anomaly(BaseModel):
     id: str
-    anomaly_type: str # "Unexpected TLS Downgrade", "Rare Cipher Suite", "Abnormal Handshake Sequence", "Certificate Hostname Mismatch", "Plaintext Credentials Before STARTTLS"
+    anomaly_type: str
     session_id: str
     protocol: str
-    anomaly_score: int # 0 to 100
-    confidence: str # "HIGH", "MEDIUM", "LOW"
-    severity: str # "CRITICAL", "HIGH", "MEDIUM", "LOW"
-    evidence: str
-    explanation: str
-    timestamp: str
+    anomaly_score: int = 0
+    confidence: str = "HIGH"
+    severity: str = "MEDIUM"
+    evidence: str = ""
+    explanation: str = ""
+    timestamp: str = ""
 
 class RiskFeatureContribution(BaseModel):
     feature_name: str
@@ -165,33 +165,30 @@ class RiskFeatureContribution(BaseModel):
     category: str
 
 class RiskAssessment(BaseModel):
-    overall_risk_score: int # 0 to 100
-    posture_rating: str # "Excellent", "Good", "Moderate", "Poor", "Critical"
-    cryptographic_risk: int # 0 to 100
-    certificate_risk: int # 0 to 100
-    protocol_risk: int # 0 to 100
-    tls_anomaly_risk: int # 0 to 100
-    configuration_risk: int # 0 to 100
-    feature_contributions: List[RiskFeatureContribution] = []
-    top_risk_drivers: List[str] = []
+    overall_risk_score: int = 0
+    posture_rating: str = "Moderate"
+    cryptographic_risk: int = 0
+    certificate_risk: int = 0
+    protocol_risk: int = 0
+    tls_anomaly_risk: int = 0
+    configuration_risk: int = 0
+    feature_contributions: List[RiskFeatureContribution] = Field(default_factory=list)
+    top_risk_drivers: List[str] = Field(default_factory=list)
     model_version: str = "Sentinel-RiskEngine-v2.4 (Explainable ML Rule Hybrid)"
 
 class ThreatMatrixItem(BaseModel):
     finding_id: str
     title: str
     severity: str
-    impact_score: int # 1 to 5
-    likelihood_score: int # 1 to 5
-    exploitability: str # "HIGH", "MEDIUM", "LOW"
-    exposure: str # "EXTERNAL", "INTERNAL", "TRANSIT"
-    affected_sessions_count: int
-    confidence: str
+    impact_score: int = 1
+    likelihood_score: int = 1
+    exploitability: str = "MEDIUM"
+    exposure: str = "EXTERNAL"
+    affected_sessions_count: int = 1
+    confidence: str = "HIGH"
 
-class SecurityPosture(BaseModel):
-    overall_score: int # 0 to 100 (e.g. 82)
-    previous_score: Optional[int] = 74
-    change: int = 8
-    breakdown: Dict[str, int] = {
+def default_breakdown() -> Dict[str, int]:
+    return {
         "protocol_security": 85,
         "tls_configuration": 78,
         "certificate_security": 80,
@@ -200,44 +197,50 @@ class SecurityPosture(BaseModel):
         "starttls_security": 82,
         "configuration_hygiene": 88
     }
-    top_recommended_actions: List[Dict[str, Any]] = []
+
+class SecurityPosture(BaseModel):
+    overall_score: int = 80
+    previous_score: Optional[int] = 74
+    change: int = 8
+    breakdown: Dict[str, int] = Field(default_factory=default_breakdown)
+    top_recommended_actions: List[Dict[str, Any]] = Field(default_factory=list)
 
 class PCAPAnalysis(BaseModel):
     id: str
     filename: str
-    file_size_bytes: int
-    file_size_formatted: str
-    sha256_hash: str
-    upload_timestamp: str
-    analysis_duration_seconds: float
+    file_size_bytes: int = 0
+    file_size_formatted: str = "0 KB"
+    sha256_hash: str = ""
+    upload_timestamp: str = ""
+    analysis_duration_seconds: float = 0.0
     is_demo: bool = False
     status: str = "COMPLETED"
     
     # Counts
-    total_packets: int
-    total_email_sessions: int
-    total_tls_sessions: int
-    total_starttls_sessions: int
-    total_certificates: int
-    critical_findings_count: int
-    high_findings_count: int
-    medium_findings_count: int
-    low_findings_count: int
-    security_score: int
+    total_packets: int = 0
+    total_email_sessions: int = 0
+    total_tls_sessions: int = 0
+    total_starttls_sessions: int = 0
+    total_certificates: int = 0
+    critical_findings_count: int = 0
+    high_findings_count: int = 0
+    medium_findings_count: int = 0
+    low_findings_count: int = 0
+    security_score: int = 0
     
     # Distributions
-    protocol_distribution: ProtocolDistribution
-    tls_version_distribution: TLSVersionDistribution
-    risk_distribution: RiskDistribution
-    crypto_weakness_stats: CryptoWeaknessStats
+    protocol_distribution: ProtocolDistribution = Field(default_factory=ProtocolDistribution)
+    tls_version_distribution: TLSVersionDistribution = Field(default_factory=TLSVersionDistribution)
+    risk_distribution: RiskDistribution = Field(default_factory=RiskDistribution)
+    crypto_weakness_stats: CryptoWeaknessStats = Field(default_factory=CryptoWeaknessStats)
     
     # Collections
-    sessions: List[EmailSession] = []
-    tls_handshakes: List[TLSHandshake] = []
-    certificates: List[Certificate] = []
-    findings: List[Finding] = []
-    anomalies: List[Anomaly] = []
-    timeline: List[TimelineEvent] = []
+    sessions: List[EmailSession] = Field(default_factory=list)
+    tls_handshakes: List[TLSHandshake] = Field(default_factory=list)
+    certificates: List[Certificate] = Field(default_factory=list)
+    findings: List[Finding] = Field(default_factory=list)
+    anomalies: List[Anomaly] = Field(default_factory=list)
+    timeline: List[TimelineEvent] = Field(default_factory=list)
     risk_assessment: Optional[RiskAssessment] = None
-    threat_matrix: List[ThreatMatrixItem] = []
+    threat_matrix: List[ThreatMatrixItem] = Field(default_factory=list)
     security_posture: Optional[SecurityPosture] = None
